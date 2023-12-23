@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+    mongo_session:
+        container_name: tele-assistant-mongo
+        image: mongo:7.0.5-rc0-jammy
+        restart: always
+        expose:
+            - "27017"
+        volumes:
+            - "./mongo/mongod.conf:/etc/mongod.conf"
+            - "./storage/mongo:/data/db"
+        command: mongod
+
+    tele_assistant_bot:
+        container_name: tele-assistant-bot
+        build: ./TeleAssistantBot
+        command: python3 src/main.py
+        depends_on:
+            - mongo_session
+        volumes:
+            - "./storage/app:/data:rw"
