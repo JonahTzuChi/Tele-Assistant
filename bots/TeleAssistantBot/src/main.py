@@ -33,10 +33,17 @@ def run():
         )
         .build()
     )
+    user_filter = filters.ALL
+    if len(cfg.allowed_user_ids) > 0:
+        user_filter = filters.User(user_id=cfg.allowed_user_ids)
+        
+    sysadmin_filter = filters.ALL
+    if len(cfg.system_admin_id) > 0:
+        sysadmin_filter = filters.User(user_id=cfg.system_admin_id)
     
-    application.add_handler(MessageHandler(filters.ALL, util.middleware_function), group=0)
-    application.add_handler(MessageHandler(filters.TEXT, util.message_handler), group=1)
-    application.add_handler(MessageHandler(filters.ATTACHMENT, util.attachment_handler), group=1)
+    application.add_handler(MessageHandler(filters.ALL, util.middleware_function, filters=user_filter), group=0)
+    application.add_handler(MessageHandler(filters.TEXT, util.message_handler, filters=user_filter), group=1)
+    application.add_handler(MessageHandler(filters.ATTACHMENT, util.attachment_handler, filters=user_filter), group=1)
     
     application.run_polling(poll_interval=0.01)
     
