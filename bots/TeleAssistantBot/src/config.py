@@ -1,3 +1,4 @@
+import os
 import yaml
 import dotenv
 from pathlib import Path
@@ -11,9 +12,12 @@ mongodb_uri = f"mongodb://{config_env['MONGODB_HOST']}:{config_env['MONGODB_PORT
 # load yaml config
 with open(config_dir / "config.yml", 'r') as f:
     config_yaml = yaml.safe_load(f)
-    
+
 telegram_token = config_yaml['telegram_token']
 openai_api_key = config_yaml['openai_api_key']
+
+os.environ["GOOGLE_CSE_ID"] = config_yaml['GOOGLE_CSE_ID']
+os.environ['GOOGLE_API_KEY'] = config_yaml['GOOGLE_API_KEY']
 
 allowed_user_ids = config_yaml['allowed_user_ids']
 system_admin_ids = config_yaml['system_admin_ids']
