@@ -133,7 +133,7 @@ def __get_active_thread(user_id: int):
     delta = (datetime.now() - last_interaction).total_seconds()
 
     thread_id = UserCollection.get_attribute(user_id, "current_thread_id")
-    if delta > cfg.idle_timeout * 60:
+    if delta > cfg.idle_timeout:
         thread_id = AssistantGPT.new_thread().id
         UserCollection.update_attribute(user_id, "current_thread_id", thread_id)
         open_new_thread = True
