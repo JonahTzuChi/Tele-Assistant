@@ -1,0 +1,14 @@
+# API-KEY
+telegram_token: <telegram-bot-token>
+openai_api_key: <openai-apipkey>
+GOOGLE_CSE_ID: <google-cse-id> # (https://console.cloud.google.com/apis/credentials
+GOOGLE_API_KEY: <google-api-key> # https://programmablesearchengine.google.com/controlpanel/create
+
+allowed_user_ids: [] # List of users' Telegram ID who have access to this bot
+system_admin_ids: [] # List of users's Telegram ID who have access to the insider features
+
+# configuration
+max_interaction: 50
+max_file_count_per_thread: 5
+idle_timeout: 3600 # UOM = seconds
+temperature: 0.1
