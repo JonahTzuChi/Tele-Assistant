@@ -9,3 +9,4 @@ tiktoken>=0.3.0
 pydub==0.25.1 # Manipulate audio with an simple and easy high level interface.
 google-api-python-client # Needed to perform Google Search, @todo: update version
 langchain # High level interface for LLM related stuff, @todo: update version
+duckduckgo-search # Needed to perform DuckDuckGo Search, @todo: update version
