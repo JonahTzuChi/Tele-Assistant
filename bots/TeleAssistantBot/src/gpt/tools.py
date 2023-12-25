@@ -13,10 +13,10 @@ class GoogleSearchAgent:
     def description(self):
         pass
 
-    def __call__(query, query, max_results=5):
+    def __call__(self, query, max_results=5):
         print(f"Begin Execution: {self.__name}...")
         output = dict()
-        output['result'] = search.results(query, max_results)
+        output['result'] = self.__google_se.results(query, max_results)
         print(f"End Execution: {self.__name}")
         return json.dumps(output)
 
