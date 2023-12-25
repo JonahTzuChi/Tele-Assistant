@@ -7,6 +7,6 @@ pymongo>=4.4.0
 openai==1.6.0
 tiktoken>=0.3.0
 pydub==0.25.1 # Manipulate audio with an simple and easy high level interface.
-google-api-python-client # Needed to perform Google Search, @todo: update version
-langchain # High level interface for LLM related stuff, @todo: update version
-duckduckgo-search # Needed to perform DuckDuckGo Search, @todo: update version
+google-api-python-client==2.111.0 # Needed to perform Google Search
+langchain==0.0.350 # High level interface for LLM related stuff
+duckduckgo-search==4.1.1 # Needed to perform DuckDuckGo Search
