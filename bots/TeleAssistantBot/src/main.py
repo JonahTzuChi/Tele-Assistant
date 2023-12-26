@@ -42,8 +42,11 @@ def run():
         sysadmin_filter = filters.User(user_id=cfg.system_admin_ids)
     
     application.add_handler(MessageHandler(filters.ALL & user_filter, util.middleware_function), group=0)
+    application.add_handler(CommandHandler("new", util.start_new_session, filters=user_filter), group=1)
+    
     application.add_handler(MessageHandler(filters.TEXT & user_filter, util.message_handler), group=1)
     application.add_handler(MessageHandler(filters.ATTACHMENT & user_filter, util.attachment_handler), group=1)
+    
     
     application.run_polling(poll_interval=0.01)
     

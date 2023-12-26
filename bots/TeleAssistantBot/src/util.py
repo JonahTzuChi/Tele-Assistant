@@ -21,7 +21,7 @@ from gpt.assistant import AssistantGPT
 from gpt.openai_file import OpenAiFile
 
 from database.user_collection import UserCollection
-from database.assistant_collection import AssistantCollection
+# from database.assistant_collection import AssistantCollection
 from database.dialog_collection import DialogCollection
 
 logging.basicConfig(
@@ -36,32 +36,33 @@ def split_text_into_chunks(text, chunk_size):
     for i in range(0, len(text), chunk_size):
         yield text[i : i + chunk_size]
 
+
 def post_processing(thread_id, messages) -> list[str]:
     new_messages = []
     old_messages = DialogCollection.get(thread_id)
-    
+
     n = len(messages) - len(old_messages)
     _messages = messages[:n]
     for msg in reversed(_messages):
         print(f"role: {msg.role}")
-        
+
         for content in msg.content:
             new_message = dict()
-            new_message['role'] = msg.role
-            new_message['type'] = content.type
-            
+            new_message["role"] = msg.role
+            new_message["type"] = content.type
+
             if content.type == "text":
-                new_message['data'] = content.text.value
+                new_message["data"] = content.text.value
             elif content.type == "image_file":
                 file_id = content.image_file.file_id
                 _path = f"image-{msg.role}-{file_id}.jpg"
-                new_message['data'] = _path
+                new_message["data"] = _path
                 OpenAiFile.load_file(file_id, _path)
             else:
                 raise TypeError(f"Unsupported content type: {content.type}")
-        
+
             new_messages.append(new_message)
-            
+
     return new_messages
 
 
@@ -96,26 +97,27 @@ async def message_handler(update: Update, context: CallbackContext):
     try:
         assistant = UserCollection.get_attribute(user.id, "current_assistant")
         thread_id, is_new_thread = __get_active_thread(user.id)
-        
+
         if is_new_thread:
             print("\nNew Thread")
             # get current file ids from MongoDB
             file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
             __release_old_files(file_ids)
         print("Instruct")
-        messages = await AssistantGPT.instruct(
-            assistant["id"], thread_id, prompt, []
-        )
+        messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
             DialogCollection.add(thread_id, msg)
-            if msg['role'] == 'user': continue
-            
-            if msg['type'] == 'text':
-                await update.message.reply_text(msg['data'])
-            elif msg['type'] == 'image_file':
-                await update.message.reply_photo(open(msg['data'], 'rb'), caption='system generated')
+            if msg["role"] == "user":
+                continue
+
+            if msg["type"] == "text":
+                await update.message.reply_text(msg["data"])
+            elif msg["type"] == "image_file":
+                await update.message.reply_photo(
+                    open(msg["data"], "rb"), caption="system generated"
+                )
     except Exception as e:
         await update.message.reply_text(f"Failed   : {str(e)}")
 
@@ -137,7 +139,8 @@ def __get_active_thread(user_id: int):
         thread_id = AssistantGPT.new_thread().id
         UserCollection.update_attribute(user_id, "current_thread_id", thread_id)
         open_new_thread = True
-
+    
+    UserCollection.tick(user_id)
     return thread_id, open_new_thread
 
 
@@ -145,28 +148,34 @@ def __release_old_files(file_ids: list):
     while len(file_ids) != 0:
         file_id = file_ids.pop(0)
         OpenAiFile.delete_file(file_id)
-        
+
+
 async def attachment_handler(update: Update, context: CallbackContext):
     print("\nIn attachment_handler\n")
     user = update.message.from_user
-    caption = update.message.text # this does not retrieve the text portion
+    caption = update.message.text  # this does not retrieve the text portion
     try:
         assistant = UserCollection.get_attribute(user.id, "current_assistant")
-        assistant_metadata = cfg.assistant[assistant['name']]
-        if assistant_metadata['tools']['code_interpreter'] == 'disabled' and assistant_metadata['tools']['retrieval'] == 'disabled':
-            return await update.message.reply_text(f"{assistant['name']} does not support file operations.")
-        
+        assistant_metadata = cfg.assistant[assistant["name"]]
+        if (
+            assistant_metadata["tools"]["code_interpreter"] == "disabled"
+            and assistant_metadata["tools"]["retrieval"] == "disabled"
+        ):
+            return await update.message.reply_text(
+                f"{assistant['name']} does not support file operations."
+            )
+
         thread_id, is_new_thread = __get_active_thread(user.id)
-        
+
         doc = update.message.document
-        
+
         filename = doc["file_name"]
         telegram_fileId = doc["file_id"]
-        
+
         export_path = f"/data/" + filename
         # get current file ids from MongoDB
         file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
-        
+
         if is_new_thread:
             __release_old_files(file_ids)
             file_ids = []
@@ -185,9 +194,11 @@ async def attachment_handler(update: Update, context: CallbackContext):
         # File Management - FIFO
         while len(file_ids) >= cfg.max_file_count_per_thread:
             file_id = file_ids.pop(0)
-            OpenAiFile.delete_file(file_id) # delete oldest at OpenAI
+            OpenAiFile.delete_file(file_id)  # delete oldest at OpenAI
         file_ids.append(file_id)
-        UserCollection.update_attribute(user.id, "current_file_ids", file_ids) # write back to MongoDB
+        UserCollection.update_attribute(
+            user.id, "current_file_ids", file_ids
+        )  # write back to MongoDB
         print("Instruct")
         prompt = f"File: {filename}\n----------------\nCaption: {caption}"
         messages = await AssistantGPT.instruct(
@@ -197,13 +208,16 @@ async def attachment_handler(update: Update, context: CallbackContext):
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
             DialogCollection.add(thread_id, msg)
-            if msg['role'] == 'user': continue
-            
-            if msg['type'] == 'text':
-                await update.message.reply_text(msg['data'])
-            elif msg['type'] == 'image_file':
-                await update.message.reply_photo(open(msg['data'], 'rb'), caption='system generated')
-                
+            if msg["role"] == "user":
+                continue
+
+            if msg["type"] == "text":
+                await update.message.reply_text(msg["data"])
+            elif msg["type"] == "image_file":
+                await update.message.reply_photo(
+                    open(msg["data"], "rb"), caption="system generated"
+                )
+
     except Exception as e:
         await update.message.reply_text(f"Failed   : {str(e)}")
 
@@ -238,3 +252,39 @@ async def error_handle(update: Update, context: CallbackContext) -> None:
         await context.bot.send_message(
             update.effective_chat.id, "Some error in error handler"
         )
+
+
+async def start_new_session(update: Update, context: CallbackContext):
+    user = update.message.from_user
+
+    current_thread_id = UserCollection.get_attribute(user.id, "current_thread_id")
+
+    # delete dialogs
+    DialogCollection.drop(current_thread_id)
+
+    # delete files
+    current_file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
+
+    for file_id in current_file_ids:
+        OpenAiFile.delete_file(file_id)
+
+    UserCollection.update_attribute(user.id, "current_file_ids", [])
+
+    await update.message.reply_text("Old session deleted.")
+
+    # new thread
+    new_thread_id = AssistantGPT.new_thread().id
+    UserCollection.update_attribute(user.id, "current_thread_id", new_thread_id)
+    UserCollection.tick(user.id)
+    
+    await update.message.reply_text("New session started.", parse_mode=ParseMode.HTML)
+
+    assistant_greeting = cfg.assistant[cfg.default_assistant_name]["greeting"]
+    assistant_parse_mode = cfg.assistant[cfg.default_assistant_name]["parse_mode"]
+
+    await update.message.reply_text(
+        assistant_greeting,
+        parse_mode=ParseMode.HTML
+        if assistant_parse_mode == "html"
+        else ParseMode.MARKDOWN,
+    )
