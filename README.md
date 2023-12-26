@@ -2,7 +2,7 @@
 * ✅ - [2023-12-23] Accepts files input
 * ✅ - [2023-12-25] Function Call (GoogleSearch, DuckDuckGoSearch)
 * ⌛ - Create Assistant on the fly
-* ⌛ - Function Call (Web Scraping)
+* ✅ - [2023-12-26] Function Call (Web Scraping - Wikipedia)
 * ✅ - [2023-12-26] Start new session
 * ⌛ - Switch Assistant
 * ⌛ - Interact with voice
