@@ -275,7 +275,8 @@ async def start_new_session(update: Update, context: CallbackContext):
     # new thread
     new_thread_id = AssistantGPT.new_thread().id
     UserCollection.update_attribute(user.id, "current_thread_id", new_thread_id)
-
+    UserCollection.tick(user.id)
+    
     await update.message.reply_text("New session started.", parse_mode=ParseMode.HTML)
 
     assistant_greeting = cfg.assistant[cfg.default_assistant_name]["greeting"]
