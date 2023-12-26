@@ -29,3 +29,10 @@ class DialogCollection:
         messages = cursor['messages']
         
         return [] if messages is None else messages
+    
+    @classmethod
+    def drop(cls, thread_id: str) -> None:
+        if not cls.exists(thread_id):
+            raise ReferenceError("Thread does not exist")
+        
+        cls.collection.delete_one({"thread_id": thread_id})

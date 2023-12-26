@@ -61,3 +61,8 @@ class UserCollection:
     def update_attribute(cls, user_id: int, colkey: str, value: Any):
         assert cls.exists(user_id), f"{user_id} not found"
         cls.collection.update_one({"telegram_id": user_id}, {"$set": {colkey: value}})
+
+    @classmethod
+    def tick(cls, user_id: int):
+        assert cls.exists(user_id), f"{user_id} not found"
+        cls.update_attribute(user_id, "last_interaction", str(datetime.now()).split(".")[0])
