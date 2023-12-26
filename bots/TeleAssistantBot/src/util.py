@@ -73,7 +73,7 @@ async def middleware_function(update: Update, context: CallbackContext):
     user = update.message.from_user
     chat_id = update.message.chat_id
     if not UserCollection.exists(user.id):
-        default_assistant: final = cfg.assistant['General Data Analyst']
+        default_assistant: final = cfg.assistant[cfg.default_assistant_name]
         user_thread = AssistantGPT.new_thread()
         UserCollection.create(
             {

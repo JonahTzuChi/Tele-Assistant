@@ -32,3 +32,4 @@ with open(config_dir / "assistant.yml", 'r') as f:
     assistant_yaml = yaml.safe_load(f)
     
 assistant = assistant_yaml['assistant']
+default_assistant_name = list(assistant.keys())[0]
