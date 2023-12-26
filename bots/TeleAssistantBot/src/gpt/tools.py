@@ -1,8 +1,12 @@
 import os
 import json
+import re
+import requests
+import config as cfg
 
 from langchain.utilities import GoogleSearchAPIWrapper
 from duckduckgo_search import DDGS
+from bs4 import BeautifulSoup
 
 
 class GoogleSearchAgent:
@@ -103,9 +107,65 @@ class DuckDuckGoSearchAgent:
         return json.dumps(output)
 
 
+class WikipediaAgent:
+    def __init__(self):
+        self.__name = "WikipediaAgent"
+        self.HEADERS = {"User-Agent": cfg.wikipedia_user_agent}
+
+    def description(self):
+        return {
+            "name": "scrape_wikipedia",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "Valid URL to access an wikipedia page",
+                        "example": "https://en.wikipedia.org/wiki/Ubuntu",
+                    }
+                },
+                "required": ["url"],
+            },
+            "description": "Scrape essential information from wikipedia page.",
+        }
+
+    def __valid_url(self, url: str):
+        # @TODO, language code
+        return re.search("^https://\w{2}.wikipedia.org", url) is not None
+
+    def __allowed(self):
+        response = requests.get(
+            "https://en.wikipedia.org/robots.txt", headers=self.HEADERS
+        )
+        return response.status_code == 200
+
+    def __scrape(self, page_text: str):
+        soup = BeautifulSoup(page_text, "html.parser")
+        firstHeading = soup.find_all(id="firstHeading")[0].get_text()
+        content = soup.find_all(id="mw-content-text")[0].get_text()
+
+        print("content type: ", type(content))
+        result = dict(firstHeading=firstHeading, content=content)
+        return result
+
+    def __call__(self, params: object):
+        url = params.get("url")
+
+        if not self.__valid_url(url):
+            return "Invalid URL, only wikipedia links are supported"
+
+        if not self.__allowed():
+            return "Blocked by Wikipedia's Backend"
+
+        page = requests.get(url, headers=self.HEADERS)
+        information = self.__scrape(page.text)
+        return json.dumps(information)
+
+
 function_dictionary = dict()
 function_dictionary["GoogleSearch"] = GoogleSearchAgent()
 function_dictionary["DuckDuckGoSearch"] = DuckDuckGoSearchAgent()
+function_dictionary["scrape_wikipedia"] = WikipediaAgent()
 
 
 def execute_function(function_name: str, arguements: str):
