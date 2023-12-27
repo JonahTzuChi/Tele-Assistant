@@ -35,3 +35,4 @@ assistant = assistant_yaml['assistant']
 default_assistant_name = list(assistant.keys())[0]
 
 wikipedia_user_agent = config_yaml['wikipedia_user_agent']
+weatherapi_api_key = config_yaml['weatherapi_api_key']
