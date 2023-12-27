@@ -4,6 +4,7 @@
 * ⌛ - Create Assistant on the fly
 * ✅ - [2023-12-26] Function Call (Web Scraping - Wikipedia)
 * ✅ - [2023-12-26] Start new session
+* ✅ - [2023-12-27] Function Call (Get Weather Data)
 * ⌛ - Switch Assistant
 * ⌛ - Interact with voice
 * ⌛ - Manually trigger dynamic context management
