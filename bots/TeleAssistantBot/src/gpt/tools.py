@@ -162,11 +162,75 @@ class WikipediaAgent:
         return json.dumps(information)
 
 
+class WeatherAPIAgent:
+    """
+    https://www.weatherapi.com/docs/#intro-request
+    """
+    def __init__(self):
+        self.__name = "WeatherAPI"
+        self.__api_key = cfg.weatherapi_api_key
+        
+    def description(self):
+        return {
+            "name": "get_weather_data",
+            "description": "Get weather data from www.weatherapi.com, either current, forecast or even historical",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "q": {
+                        "type": "string",
+                        "description": "Either city name, US zip, UK postcode, or Latitude and Longitude"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "Mode can be either current, forecast or history",
+                        "default": "current",
+                        "enum": ["current", "forecast", "history"]
+                    },
+                    "dt": {
+                        "type": "string",
+                        "description": "Date in yyyy-MM-dd format. This is only required for 'history'."
+                    }
+                },
+                "required": ['q', 'mode']
+            }
+        }
+    
+    
+    def __call__(self, params: object):
+        # https://api.weatherapi.com/v1/forecast.json?key=cbf1d45b966e4461824131655232712&q=lumbini&days=3&aqi=no&alerts=yes
+        BASE_URL = "https://api.weatherapi.com/v1"
+        q = params.get("q")
+        
+        if q is None:
+            return "Missing Arguement. q is required"
+        
+        mode = params.get("mode")
+        
+        if mode not in ["current", "forecast", "history"]:
+            return "Mode must be either 'current', 'forecast' or 'history'"
+        
+        if mode == "current":
+            url = f"{BASE_URL}/{mode}.json?key={self.__api_key}&q={q}&aqi=yes"
+        elif mode == "forecast":
+            url = f"{BASE_URL}/{mode}.json?key={self.__api_key}&q={q}&days=10&aqi=yes&alerts=yes"
+        elif mode == "history":
+            dt = params.get("dt")
+            if dt is None:
+                return "Missing Arguement. dt is required"
+            url = f"{BASE_URL}/{mode}.json?key={self.__api_key}&q={q}&dt={dt}"
+            
+        response = requests.get(url)
+        print("\n\nweatherapi: ", response.text)
+        
+        return response.text
+        
+        
 function_dictionary = dict()
 function_dictionary["GoogleSearch"] = GoogleSearchAgent()
 function_dictionary["DuckDuckGoSearch"] = DuckDuckGoSearchAgent()
 function_dictionary["scrape_wikipedia"] = WikipediaAgent()
-
+function_dictionary['get_weather_data'] = WeatherAPIAgent()
 
 def execute_function(function_name: str, arguements: str):
     if not function_name in function_dictionary.keys():

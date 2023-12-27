@@ -15,6 +15,7 @@ import re
 import os
 import json
 
+
 class AssistantGPT:
     backend = OpenAI(api_key=cfg.openai_api_key)
     moderator = Moderations(backend)
@@ -25,7 +26,7 @@ class AssistantGPT:
 
     @classmethod
     def new_assistant(cls, params: dict):
-        """ @todo Implement this """
+        """@todo Implement this"""
         # params['id'] = assistant.id
         return params
 
@@ -121,54 +122,60 @@ class AssistantGPT:
             )
             print("\nrun message: ", run_message)
             run = await cls.__polling(thread_id=thread_id, run_id=run_message.id)
-            
+
             function_call_counter = 0
             while run.status == "requires_action":
                 print("\n\nrequires_action\n\n")
-                
+
                 function_call_counter += 1
                 if function_call_counter > 5:
+                    is_cancelled = await cls.__cancel(
+                        thread_id=thread_id, run_id=run.id
+                    )
+                    if not is_cancelled:
+                        raise TimeoutError(
+                            "The service endpoint seems to be down. Failed to cancel the run!!!"
+                        )
                     raise TimeoutError(
                         f"Execute function call too many times: {function_call_counter}!!!"
                     )
-                    
+
                 tool_calls = run.required_action.submit_tool_outputs.tool_calls
                 print(tool_calls)
                 tool_outputs = [{} for _ in range(len(tool_calls))]
-                
+
                 for idx, tool in enumerate(tool_calls):
                     tool_call_id = tool.id
                     function_name = tool.function.name
                     print(f"\ntool_call_id: {tool_call_id}")
                     print(f"\nfunction_name: {function_name}")
-                    
+
                     # try except here
                     try:
                         function_arguments = json.loads(tool.function.arguments)
-                        print(f"\n\nCalling: {function_name}\nArguements: {function_arguments}\n")
+                        print(
+                            f"\n\nCalling: {function_name}\nArguements: {function_arguments}\n"
+                        )
                         output = execute_function(function_name, function_arguments)
                     except Exception as e:
                         output = f"Error: {str(e)}"
                         print(f"\n\n{output}", flush=True)
                     print(f"\n\nOutput: {output}")
-                    tool_outputs[idx] = {
-                        "tool_call_id": tool_call_id,
-                        "output": output
-                    }
-                    
-                run_submit_tool_outputs = cls.backend.beta.threads.runs.submit_tool_outputs(
-                    thread_id=thread_id, run_id=run.id, tool_outputs=tool_outputs
+                    tool_outputs[idx] = {"tool_call_id": tool_call_id, "output": output}
+
+                run_submit_tool_outputs = (
+                    cls.backend.beta.threads.runs.submit_tool_outputs(
+                        thread_id=thread_id, run_id=run.id, tool_outputs=tool_outputs
+                    )
                 )
                 run = await cls.__polling(thread_id=thread_id, run_id=run.id)
-            
+
             if run.status == "completed":
                 messages = cls.backend.beta.threads.messages.list(thread_id=thread_id)
                 return messages.data
-            
+
             print(f"\n\nStatus: {run.status}")
-            is_cancelled = await cls.__cancel(
-                thread_id=thread_id, run_id=run.id
-            )
+            is_cancelled = await cls.__cancel(thread_id=thread_id, run_id=run.id)
             if not is_cancelled:
                 raise TimeoutError(
                     "The service endpoint seems to be down. Failed to cancel the run!!!"
