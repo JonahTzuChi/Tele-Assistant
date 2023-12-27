@@ -26,6 +26,7 @@ max_interactions = config_yaml['max_interactions']
 max_file_count_per_thread = config_yaml['max_file_count_per_thread']
 idle_timeout = config_yaml['idle_timeout']
 temperature = config_yaml['temperature']
+max_retries = config_yaml['max_retries']
 
 # load assistant.yml
 with open(config_dir / "assistant.yml", 'r') as f:

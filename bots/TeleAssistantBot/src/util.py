@@ -104,7 +104,7 @@ async def message_handler(update: Update, context: CallbackContext):
             file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
             __release_old_files(file_ids)
         print("Instruct")
-        messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
+        messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [], cfg.max_retries)
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
@@ -153,7 +153,7 @@ def __release_old_files(file_ids: list):
 async def attachment_handler(update: Update, context: CallbackContext):
     print("\nIn attachment_handler\n")
     user = update.message.from_user
-    caption = update.message.text  # this does not retrieve the text portion
+    caption = update.message.caption  # this does not retrieve the text portion
     try:
         assistant = UserCollection.get_attribute(user.id, "current_assistant")
         assistant_metadata = cfg.assistant[assistant["name"]]
@@ -202,7 +202,7 @@ async def attachment_handler(update: Update, context: CallbackContext):
         print("Instruct")
         prompt = f"File: {filename}\n----------------\nCaption: {caption}"
         messages = await AssistantGPT.instruct(
-            assistant["id"], thread_id, prompt, file_ids
+            assistant["id"], thread_id, prompt, file_ids, cfg.max_retries
         )
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
