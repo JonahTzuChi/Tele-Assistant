@@ -111,7 +111,8 @@ class WikipediaAgent:
     def __init__(self):
         self.__name = "WikipediaAgent"
         self.HEADERS = {"User-Agent": cfg.wikipedia_user_agent}
-
+        self.__cache = dict()
+        
     def description(self):
         return {
             "name": "scrape_wikipedia",
@@ -150,7 +151,10 @@ class WikipediaAgent:
 
     def __call__(self, params: object):
         url = params.get("url")
-
+        if url in self.__cache.keys():
+            print("Get from cache!!!")
+            return self.__cache[url]
+        
         if not self.__valid_url(url):
             return "Invalid URL, only wikipedia links are supported"
 
@@ -159,7 +163,9 @@ class WikipediaAgent:
 
         page = requests.get(url, headers=self.HEADERS)
         information = self.__scrape(page.text)
-        return json.dumps(information)
+        jsonStr = json.dumps(information)
+        self.__cache[url] = jsonStr
+        return jsonStr
 
 
 class WeatherAPIAgent:
@@ -221,7 +227,7 @@ class WeatherAPIAgent:
             url = f"{BASE_URL}/{mode}.json?key={self.__api_key}&q={q}&dt={dt}"
             
         response = requests.get(url)
-        print("\n\nweatherapi: ", response.text)
+        # print("\n\nweatherapi: ", response.text)
         
         return response.text
         
