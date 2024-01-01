@@ -157,7 +157,7 @@ def __release_old_files(file_ids: list):
 async def attachment_handler(update: Update, context: CallbackContext):
     print("\nIn attachment_handler\n")
     user = update.message.from_user
-    caption = update.message.text  # this does not retrieve the text portion
+    caption = update.message.caption  # this does not retrieve the text portion
     try:
         assistant = UserCollection.get_attribute(user.id, "current_assistant")
         assistant_metadata = cfg.assistant[assistant["name"]]
