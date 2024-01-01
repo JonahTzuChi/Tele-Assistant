@@ -103,7 +103,11 @@ async def message_handler(update: Update, context: CallbackContext):
             file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
             __release_old_files(file_ids)
         print("Instruct")
-        messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
+        status, messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
+        if status['msg'] != 'completed':
+            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            await start_new_session(update, context)
+            
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
@@ -201,9 +205,13 @@ async def attachment_handler(update: Update, context: CallbackContext):
         )  # write back to MongoDB
         print("Instruct")
         prompt = f"File: {filename}\n----------------\nCaption: {caption}"
-        messages = await AssistantGPT.instruct(
+        status, messages = await AssistantGPT.instruct(
             assistant["id"], thread_id, prompt, file_ids
         )
+        if status['msg'] != 'completed':
+            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            await start_new_session(update, context)
+        
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:

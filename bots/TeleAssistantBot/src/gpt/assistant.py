@@ -3,10 +3,10 @@ from gpt.poll import LinearAdditiveGrowth, LinearMultiplicativeGrowth, Exponenti
 from gpt.exceptions import ViolateContentModerationError, TimeoutError
 from gpt.openai_file import OpenAiFile
 from gpt.tools import execute_function
+from gpt.guardrail import UserGuardRail
 
 import tiktoken
 from openai import OpenAI
-from openai.resources.moderations import Moderations
 
 import time
 from typing import Any, Optional
@@ -18,7 +18,6 @@ import json
 
 class AssistantGPT:
     backend = OpenAI(api_key=cfg.openai_api_key)
-    moderator = Moderations(backend)
 
     @classmethod
     def new_thread(cls):
@@ -32,8 +31,10 @@ class AssistantGPT:
 
     @classmethod
     def __is_appropriate_prompt(cls, prompt) -> bool:
-        result = cls.moderator.create(input=prompt, model="text-moderation-latest")
-        return not any(map(lambda x: x.flagged, result.results))
+        return UserGuardRail.check(prompt)
+        # cls.moderator = OpenAI(api_key=cfg.openai_api_key
+        # result = cls.moderator.create(input=prompt, model="text-moderation-latest")
+        # return not any(map(lambda x: x.flagged, result.results))
 
     @classmethod
     async def __polling(
@@ -63,6 +64,7 @@ class AssistantGPT:
                 return retrieve
             _elapsed_time += interval
             if _elapsed_time >= timeout:
+                print(f"Timeout: {_elapsed_time}/{timeout} seconds reached.")
                 return retrieve
             if callback is not None:
                 interval = callback(interval)
@@ -116,11 +118,11 @@ class AssistantGPT:
             message = cls.backend.beta.threads.messages.create(
                 thread_id=thread_id, role="user", content=prompt, file_ids=file_ids
             )
-            print("\nmessage: ", message)
+            # print("\nmessage: ", message)
             run_message = cls.backend.beta.threads.runs.create(
                 thread_id=thread_id, assistant_id=assistant_id
             )
-            print("\nrun message: ", run_message)
+            # print("\nrun message: ", run_message)
             run = await cls.__polling(thread_id=thread_id, run_id=run_message.id)
 
             function_call_counter = 0
@@ -128,17 +130,14 @@ class AssistantGPT:
                 print("\n\nrequires_action\n\n")
 
                 function_call_counter += 1
-                if function_call_counter > 5:
+                if function_call_counter > 10:
+                    
                     is_cancelled = await cls.__cancel(
                         thread_id=thread_id, run_id=run.id
                     )
                     if not is_cancelled:
-                        raise TimeoutError(
-                            "The service endpoint seems to be down. Failed to cancel the run!!!"
-                        )
-                    raise TimeoutError(
-                        f"Execute function call too many times: {function_call_counter}!!!"
-                    )
+                        return {"msg": "The service endpoint seems to be down. Failed to cancel the run!!!"}, None
+                    return {"msg": f"Execute function call too many times: {function_call_counter}!!!"}, None
 
                 tool_calls = run.required_action.submit_tool_outputs.tool_calls
                 print(tool_calls)
@@ -147,6 +146,14 @@ class AssistantGPT:
                 for idx, tool in enumerate(tool_calls):
                     tool_call_id = tool.id
                     function_name = tool.function.name
+                    if function_call_counter > 5:
+                        # provide soft warning
+                        tool_outputs[idx] = {
+                            "tool_call_id": tool_call_id, 
+                            "output": "Apparently, you had reached the maximum number of function calls. \
+                                Please try do your best to provide an answer with your best knowledge."
+                            }
+                        continue
                     print(f"\ntool_call_id: {tool_call_id}")
                     print(f"\nfunction_name: {function_name}")
 
@@ -160,7 +167,8 @@ class AssistantGPT:
                     except Exception as e:
                         output = f"Error: {str(e)}"
                         print(f"\n\n{output}", flush=True)
-                    print(f"\n\nOutput: {output}")
+                    # print(f"\n\nOutput: {output}")
+                    
                     tool_outputs[idx] = {"tool_call_id": tool_call_id, "output": output}
 
                 run_submit_tool_outputs = (
@@ -172,15 +180,11 @@ class AssistantGPT:
 
             if run.status == "completed":
                 messages = cls.backend.beta.threads.messages.list(thread_id=thread_id)
-                return messages.data
+                return {"msg": "completed"}, messages.data
 
             print(f"\n\nStatus: {run.status}")
             is_cancelled = await cls.__cancel(thread_id=thread_id, run_id=run.id)
             if not is_cancelled:
-                raise TimeoutError(
-                    "The service endpoint seems to be down. Failed to cancel the run!!!"
-                )
+                return {"msg": "The service endpoint seems to be down. Failed to cancel the run!!!"}, None
             attempt += 1
-        raise TimeoutError(
-            f"The service endpoint seems to be down.!!! Tried {attempt} attempts."
-        )
+        return {"msg": "The service endpoint seems to be down. Tried {attempt}!!!"}, None
