@@ -62,7 +62,6 @@ def post_processing(thread_id, messages) -> list[str]:
                 raise TypeError(f"Unsupported content type: {content.type}")
 
             new_messages.append(new_message)
-
     return new_messages
 
 
@@ -104,7 +103,11 @@ async def message_handler(update: Update, context: CallbackContext):
             file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
             __release_old_files(file_ids)
         print("Instruct")
-        messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [], cfg.max_retries)
+        status, messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
+        if status['msg'] != 'completed':
+            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            await start_new_session(update, context)
+            
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
@@ -118,6 +121,7 @@ async def message_handler(update: Update, context: CallbackContext):
                 await update.message.reply_photo(
                     open(msg["data"], "rb"), caption="system generated"
                 )
+        print("== END ==")
     except Exception as e:
         await update.message.reply_text(f"Failed   : {str(e)}")
 
@@ -201,9 +205,13 @@ async def attachment_handler(update: Update, context: CallbackContext):
         )  # write back to MongoDB
         print("Instruct")
         prompt = f"File: {filename}\n----------------\nCaption: {caption}"
-        messages = await AssistantGPT.instruct(
-            assistant["id"], thread_id, prompt, file_ids, cfg.max_retries
+        status, messages = await AssistantGPT.instruct(
+            assistant["id"], thread_id, prompt, file_ids
         )
+        if status['msg'] != 'completed':
+            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            await start_new_session(update, context)
+        
         print("Post Processing")
         output_messages = post_processing(thread_id, messages)
         for msg in output_messages:
@@ -217,7 +225,7 @@ async def attachment_handler(update: Update, context: CallbackContext):
                 await update.message.reply_photo(
                     open(msg["data"], "rb"), caption="system generated"
                 )
-
+        print("== END ==")
     except Exception as e:
         await update.message.reply_text(f"Failed   : {str(e)}")
 
@@ -255,36 +263,44 @@ async def error_handle(update: Update, context: CallbackContext) -> None:
 
 
 async def start_new_session(update: Update, context: CallbackContext):
+    print("Start new session")
     user = update.message.from_user
 
     current_thread_id = UserCollection.get_attribute(user.id, "current_thread_id")
 
-    # delete dialogs
-    DialogCollection.drop(current_thread_id)
+    try:
+        # delete dialogs
+        DialogCollection.drop(current_thread_id)
 
-    # delete files
-    current_file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
+        # delete files
+        current_file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
 
-    for file_id in current_file_ids:
-        OpenAiFile.delete_file(file_id)
+        for file_id in current_file_ids:
+            OpenAiFile.delete_file(file_id)
 
-    UserCollection.update_attribute(user.id, "current_file_ids", [])
+        UserCollection.update_attribute(user.id, "current_file_ids", [])
 
-    await update.message.reply_text("Old session deleted.")
+        await update.message.reply_text("Old session deleted.")
 
-    # new thread
-    new_thread_id = AssistantGPT.new_thread().id
-    UserCollection.update_attribute(user.id, "current_thread_id", new_thread_id)
-    UserCollection.tick(user.id)
-    
-    await update.message.reply_text("New session started.", parse_mode=ParseMode.HTML)
+        # new thread
+        new_thread_id = AssistantGPT.new_thread().id
+        UserCollection.update_attribute(user.id, "current_thread_id", new_thread_id)
+        UserCollection.tick(user.id)
+        
+        await update.message.reply_text("New session started.", parse_mode=ParseMode.HTML)
 
-    assistant_greeting = cfg.assistant[cfg.default_assistant_name]["greeting"]
-    assistant_parse_mode = cfg.assistant[cfg.default_assistant_name]["parse_mode"]
+        assistant_greeting = cfg.assistant[cfg.default_assistant_name]["greeting"]
+        assistant_parse_mode = cfg.assistant[cfg.default_assistant_name]["parse_mode"]
 
-    await update.message.reply_text(
-        assistant_greeting,
-        parse_mode=ParseMode.HTML
-        if assistant_parse_mode == "html"
-        else ParseMode.MARKDOWN,
-    )
+        await update.message.reply_text(
+            assistant_greeting,
+            parse_mode=ParseMode.HTML
+            if assistant_parse_mode == "html"
+            else ParseMode.MARKDOWN,
+        )
+    except Exception as e:
+        print(str(e), flush=True)
+        await update.message.reply_text(
+            str(e),
+            parse_mode=ParseMode.HTML
+        )
