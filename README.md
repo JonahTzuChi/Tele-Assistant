@@ -8,7 +8,7 @@
 * ⌛ - Switch Assistant
 * ⌛ - Interact with voice
 * ⌛ - Manually trigger dynamic context management
-* ⌛ - Input & Output moderation
+* ✅ - [2024-01-04] Input & Output moderation
   
 # Credit
 This project is greatly inspired by [/father-bot/chatgpt_telegram_bot](https://github.com/father-bot/chatgpt_telegram_bot), many nicely written code blocks were borrowed from there.
