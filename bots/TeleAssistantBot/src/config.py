@@ -37,3 +37,5 @@ default_assistant_name = list(assistant.keys())[0]
 
 wikipedia_user_agent = config_yaml['wikipedia_user_agent']
 weatherapi_api_key = config_yaml['weatherapi_api_key']
+
+l2_moderator_prompt = config_yaml['l2_moderator_prompt']

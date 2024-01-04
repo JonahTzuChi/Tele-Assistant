@@ -19,6 +19,7 @@ from telegram.ext import CallbackContext
 import config as cfg
 from gpt.assistant import AssistantGPT
 from gpt.openai_file import OpenAiFile
+from gpt.guardrail import AssistantGuardRail
 
 from database.user_collection import UserCollection
 # from database.assistant_collection import AssistantCollection
@@ -37,7 +38,7 @@ def split_text_into_chunks(text, chunk_size):
         yield text[i : i + chunk_size]
 
 
-def post_processing(thread_id, messages) -> list[str]:
+def post_processing(thread_id, messages, guardrail=AssistantGuardRail) -> list[str]:
     new_messages = []
     old_messages = DialogCollection.get(thread_id)
 
@@ -62,6 +63,11 @@ def post_processing(thread_id, messages) -> list[str]:
                 raise TypeError(f"Unsupported content type: {content.type}")
 
             new_messages.append(new_message)
+    # scan the new generated responses
+    is_not_appropriate = not all(map(lambda msg: guardrail.check(msg['data']), new_messages))
+    if is_not_appropriate:
+        print("Assistant had been compromised")
+        return None
     return new_messages
 
 
@@ -102,6 +108,8 @@ async def message_handler(update: Update, context: CallbackContext):
             # get current file ids from MongoDB
             file_ids = UserCollection.get_attribute(user.id, "current_file_ids")
             __release_old_files(file_ids)
+        # Pre-Processing
+        
         print("Instruct")
         status, messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
         if status['msg'] != 'completed':
@@ -109,7 +117,7 @@ async def message_handler(update: Update, context: CallbackContext):
             await start_new_session(update, context)
             
         print("Post Processing")
-        output_messages = post_processing(thread_id, messages)
+        output_messages = post_processing(thread_id, messages, AssistantGuardRail)
         for msg in output_messages:
             DialogCollection.add(thread_id, msg)
             if msg["role"] == "user":
