@@ -7,7 +7,6 @@ import json
 from openai import OpenAI
 from openai.resources.moderations import Moderations
 
-
 class UserGuardRail:
     backend = OpenAI(api_key=cfg.openai_api_key)
     moderator = Moderations(backend)
@@ -22,7 +21,7 @@ class UserGuardRail:
             return False
         print("level-2")
         # level-2
-        prompt_object = {"objective": "General Assistant", "prompt": prompt}
+        prompt_object = {"objective": cfg.assistant_objective, "prompt": prompt}
         completion = cls.backend.chat.completions.create(
             model="gpt-3.5-turbo-1106",
             messages=[
@@ -41,11 +40,11 @@ class UserGuardRail:
         try:
             response = json.loads(response)
             score = response["score"]
-            return float(score) < 0.5
+            return float(score) < 0.5, response['response']
         except:
             print(f"Failed to parse response: {response}")
-            return True
-
+            return True, 'Failed to parse response'
+        
 
 class AssistantGuardRail:
     backend = OpenAI(api_key=cfg.openai_api_key)
@@ -54,7 +53,7 @@ class AssistantGuardRail:
     @classmethod
     def check(cls, prompt):
         # level-1
-        print("level-1")
+        print("level-1: ", prompt)
         result = cls.moderator.create(input=prompt, model="text-moderation-latest")
         is_appropriate = not any(map(lambda x: x.flagged, result.results))
         return is_appropriate

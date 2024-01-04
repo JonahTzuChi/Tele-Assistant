@@ -33,9 +33,10 @@ with open(config_dir / "assistant.yml", 'r') as f:
     assistant_yaml = yaml.safe_load(f)
     
 assistant = assistant_yaml['assistant']
-default_assistant_name = list(assistant.keys())[0]
+default_assistant_name = "Nurse Manager assistant" # list(assistant.keys())[-1] # nurse manager assistant
 
 wikipedia_user_agent = config_yaml['wikipedia_user_agent']
 weatherapi_api_key = config_yaml['weatherapi_api_key']
 
+assistant_objective = assistant_yaml['objective']
 l2_moderator_prompt = config_yaml['l2_moderator_prompt']

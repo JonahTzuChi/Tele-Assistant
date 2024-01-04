@@ -30,7 +30,7 @@ class AssistantGPT:
         return params
 
     @classmethod
-    def __is_appropriate_prompt(cls, prompt) -> bool:
+    def __is_appropriate_prompt(cls, prompt) -> tuple[bool, str]:
         return UserGuardRail.check(prompt)
         # cls.moderator = OpenAI(api_key=cfg.openai_api_key
         # result = cls.moderator.create(input=prompt, model="text-moderation-latest")
@@ -108,10 +108,13 @@ class AssistantGPT:
         if len(file_names) > 0:
             file_ids = list(map(OpenAiFile.store_file, file_names))
 
-        if not cls.__is_appropriate_prompt(prompt):
-            raise ViolateContentModerationError(
-                "The content violates the content moderation policy"
-            )
+        is_appropriate, _response = cls.__is_appropriate_prompt(prompt)
+        
+        if not is_appropriate:
+            return {"msg": _response}, None
+            # raise ViolateContentModerationError(
+            #     "The content violates the content moderation policy"
+            # )
 
         attempt = 0
         while attempt < max_retries:

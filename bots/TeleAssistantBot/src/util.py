@@ -113,7 +113,7 @@ async def message_handler(update: Update, context: CallbackContext):
         print("Instruct")
         status, messages = await AssistantGPT.instruct(assistant["id"], thread_id, prompt, [])
         if status['msg'] != 'completed':
-            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            return await update.message.reply_text(f"Sorry\n{status['msg']}")
             await start_new_session(update, context)
             
         print("Post Processing")
@@ -131,7 +131,7 @@ async def message_handler(update: Update, context: CallbackContext):
                 )
         print("== END ==")
     except Exception as e:
-        await update.message.reply_text(f"Failed   : {str(e)}")
+        await update.message.reply_text(f"Exception:\n{str(e)}")
 
 
 def __str2datetime(inp):
@@ -217,7 +217,7 @@ async def attachment_handler(update: Update, context: CallbackContext):
             assistant["id"], thread_id, prompt, file_ids
         )
         if status['msg'] != 'completed':
-            return await update.message.reply_text(f"Failed   : {status['msg']}")
+            return await update.message.reply_text(f"Sorry\n{status['msg']}")
             await start_new_session(update, context)
         
         print("Post Processing")
@@ -235,7 +235,7 @@ async def attachment_handler(update: Update, context: CallbackContext):
                 )
         print("== END ==")
     except Exception as e:
-        await update.message.reply_text(f"Failed   : {str(e)}")
+        await update.message.reply_text(f"Sorry\n{str(e)}")
 
 
 async def error_handle(update: Update, context: CallbackContext) -> None:
