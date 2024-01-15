@@ -15,6 +15,7 @@ services:
     tele_assistant_bot:
         container_name: tele-assistant-bot
         build: ./TeleAssistantBot
+        restart: always
         command: python3 src/main.py
         depends_on:
             - mongo_session
